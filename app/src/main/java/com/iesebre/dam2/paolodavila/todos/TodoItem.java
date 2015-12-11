@@ -23,6 +23,17 @@ public class TodoItem {
         this.priority = priority;
     }
 
+    static public TodoItem create(String serializedData) {
+        // Use GSON to instantiate this class using the JSON representation of the state
+        Gson gson = new Gson();
+        return gson.fromJson(serializedData, TodoItem.class);
+    }
+
+    public String serialize() {
+        Gson gson = new Gson();
+        return gson.toJson(this);
+    }
+
     public String getName() {
         return name;
     }
@@ -35,9 +46,7 @@ public class TodoItem {
         return done;
     }
 
-    public void setDone(boolean done) {
-        this.done = done;
-    }
+    public void setDone(boolean done) { this.done = done; }
 
     public int getPriority() {
         return priority;
@@ -50,10 +59,5 @@ public class TodoItem {
     @Override
     public String toString() {
         return "{ name: " + name + ", done: " + done + ", priority: " + priority + " }";
-    }
-
-    public String serialize() {
-        Gson gson = new Gson();
-        return gson.toJson(this);
     }
 }
