@@ -7,16 +7,28 @@
     android:weightSum="1"
     >
 
+    <!--TASK NAME-->
     <EditText
         android:id="@+id/task_title"
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:inputType="textCapSentences"
         android:maxLines="1"
-        android:hint="Nom tasca"/>
+        android:hint="Nom de la tasca" />
 
-    <!--PRIORITY-->
+    <!--TASK PRIORITY-->
+    <EditText
+        android:id="@+id/task_priority"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:inputType="textCapSentences"
+        android:maxLines="1"
+        android:hint="Prioritat de la tasca" />
 
-    <!--DONE-->
-
+    <!--TASK DONE-->
+    <CheckBox
+        android:id="@+id/task_done"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text=" Estat de la tasca" />
 </LinearLayout>

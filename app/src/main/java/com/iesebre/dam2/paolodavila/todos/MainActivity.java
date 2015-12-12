@@ -1,14 +1,10 @@
 package com.iesebre.dam2.paolodavila.todos;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.os.Parcelable;
-import android.support.design.widget.FloatingActionButton;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
@@ -18,12 +14,13 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowManager;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
+import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
@@ -42,9 +39,11 @@ public class MainActivity extends AppCompatActivity
     private Gson gson;
 
     public TodoArrayList tasks;
-    public TodoArrayList removed;
     private CustomListAdapter adapter;
-    String taskName;
+
+    private String taskName;
+    private int taskPriority;
+    private boolean taskDone;
 
 
     @Override
@@ -58,23 +57,14 @@ public class MainActivity extends AppCompatActivity
 
         //Serialize our TaskArrayList to Json
         Type arrayTodoList = new TypeToken<TodoArrayList>(){}.getType();
-        String serializedData = gson.toJson(tasks, arrayTodoList);
+        String tempSave = gson.toJson(tasks, arrayTodoList);
 
         //Save tasks in SharedPreferences
-        SharedPreferences todos = getSharedPreferences(SHARED_PREFERENCES_TODOS, 0);
-        SharedPreferences.Editor editor = todos.edit();
+        SharedPreferences todoSave = getSharedPreferences(SHARED_PREFERENCES_TODOS, 0);
+        SharedPreferences.Editor editor = todoSave.edit();
 
-        editor.putString("TaskArrayList", serializedData);
-        editor.commit();
-
-//        Gson gson = new Gson();
-//        Type arrayTodoList = new TypeToken<TodoArrayList>() {}.getType();
-//        String json = gson.toJson(todoList, arrayTodoList);
-//
-//        String initial_json = "";   //TODO: tasks.toJson();
-//        SharedPreferences.Editor editor = todos.edit();
-//        editor.putString(TODO_LIST, initial_json);
-//        editor.commit();
+        editor.putString("TODO_LIST", tempSave);
+        editor.apply();
     }
 
     @Override
@@ -86,7 +76,7 @@ public class MainActivity extends AppCompatActivity
         tasks = new TodoArrayList();
 
         //Completed tasks we have removed
-        removed = new TodoArrayList();
+        //removed = new TodoArrayList();
 
         //Gson to serialize our objects to Json to save
         gson = new Gson();
@@ -234,17 +224,25 @@ public class MainActivity extends AppCompatActivity
 
     public void removeTask(View view){
 
-        //Removes all completed tasks and notifies the view
-        removed = tasks.getCompletedTasks();
+        ListView lvItems = (ListView) findViewById(R.id.todolistview);
+
+        for (int i = tasks.size() -1; i >= 0; i--) {
+            RelativeLayout vwParentRow = (RelativeLayout) lvItems.getChildAt(i);
+            CheckBox btnChild = (CheckBox)vwParentRow.getChildAt(0);
+            if (btnChild.isChecked()) {
+                tasks.remove(i); }
+        }
+
+        adapter.notifyDataSetChanged();
     }
 
     public void showAddTaskForm(View view) {
-        taskName = "";
+        taskDone = false;
+        //taskName = "";
         EditText taskNameText;
+        EditText taskPriorityText;
+        CheckBox taskDoneText;
 
-//        MaterialDialog dialog
-//        public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-//        } = new MaterialDialog.Builder(this).
 
         MaterialDialog dialog = new MaterialDialog.Builder(this).
                 title("Afegir tasca").
@@ -257,14 +255,11 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onClick(MaterialDialog dialog, DialogAction which) {
                         final TodoItem todoItem = new TodoItem();
-//                        EditText et = (EditText) dialog.getCustomView().findViewById(R.id.task_title);
-//                        todoItem.setName(et.toString());
                         todoItem.setName(taskName);
-                        //todoItem.setDone(true);
-                        //todoItem.setPriority(1);
+                        todoItem.setPriority(taskPriority);
+                        todoItem.setDone(taskDone);
 
                         tasks.add(todoItem);
-                        //tasks.remove(1);
 
                         adapter.notifyDataSetChanged();
                     }
@@ -289,6 +284,46 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void afterTextChanged(Editable s) {
                 //Code here:
+            }
+        });
+
+        taskPriorityText = (EditText) dialog.getCustomView().findViewById(R.id.task_priority);
+        taskPriorityText.addTextChangedListener(new TextWatcher() {
+
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+                try {
+                    taskPriority = Integer.parseInt(s.toString());
+                } catch (Throwable e) {
+                    CharSequence text = "La prioritat ha de ser un numero !!";
+                    int duration = Toast.LENGTH_SHORT;
+                    Toast toast = Toast.makeText(MainActivity.this, text, duration);
+                    toast.show();
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
+
+        taskDoneText = (CheckBox) dialog.getCustomView().findViewById(R.id.task_done);
+        taskDoneText.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (isChecked) {
+                    taskDone = true;
+                } else {
+                    taskDone = false;
+                }
             }
         });
     }
@@ -343,10 +378,5 @@ public class MainActivity extends AppCompatActivity
                 //Code here:
             }
         });
-    }
-
-    //We should save our instance here, currently we do nothing
-    public void onSaveInstanceState(Bundle savedState) {
-        super.onSaveInstanceState(savedState);
     }
 }

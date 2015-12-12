@@ -8,13 +8,15 @@ import com.google.gson.Gson;
 public class TodoItem {
 
     private String name;
-    private boolean done;
     private int priority;
+    private boolean done;
+    private boolean checkbox;
 
     public TodoItem() {
         this.name = "";
         this.done = false;
         this.priority = 1;
+        this.checkbox= false;
     }
 
     public TodoItem(String name, boolean done, int priority) {
@@ -38,9 +40,7 @@ public class TodoItem {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public void setName(String name) { this.name = name; }
 
     public boolean isDone() {
         return done;
@@ -48,13 +48,13 @@ public class TodoItem {
 
     public void setDone(boolean done) { this.done = done; }
 
-    public int getPriority() {
-        return priority;
-    }
+    public int getPriority() { return priority; }
 
-    public void setPriority(int priority) {
-        this.priority = priority;
-    }
+    public void setPriority(int priority) { this.priority = priority; }
+
+    public boolean isCheckbox() { return checkbox; }
+
+    public void setCheckbox(boolean checkbox) { this.checkbox = checkbox; }
 
     @Override
     public String toString() {
