@@ -165,12 +165,12 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onCompleted(Exception e, JsonArray result) {
                         todoList = result.toString();
-                        updateTodoslv();
+                        updateTodosList();
                     }
                 });
     }
 
-    private void updateTodoslv() {
+    private void updateTodosList() {
         swipeContainer.setRefreshing(false);
     }
 
