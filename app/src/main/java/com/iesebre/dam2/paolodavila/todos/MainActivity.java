@@ -3,6 +3,8 @@ package com.iesebre.dam2.paolodavila.todos;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.support.design.widget.NavigationView;
@@ -14,10 +16,12 @@ import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
@@ -25,7 +29,10 @@ import android.widget.Toast;
 import com.afollestad.materialdialogs.DialogAction;
 import com.afollestad.materialdialogs.MaterialDialog;
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.reflect.TypeToken;
+import com.koushikdutta.async.future.FutureCallback;
+import com.koushikdutta.ion.Ion;
 import java.lang.reflect.Type;
 
 public class MainActivity extends AppCompatActivity
@@ -34,6 +41,8 @@ public class MainActivity extends AppCompatActivity
     //Definició de la constant SHARED_PREFERENCES_TODOS assignant un string
     private static final String SHARED_PREFERENCES_TODOS = "SP_TODOS";
     private static final String TODO_LIST = "todo_list";
+
+    private String todoList="";
 
     // Per utilitzar-lo des de qualsevol lloc
     private Gson gson;
@@ -44,6 +53,8 @@ public class MainActivity extends AppCompatActivity
     private String taskName;
     private int taskPriority;
     private boolean taskDone;
+
+    private SwipeRefreshLayout swipeContainer;
 
 
     @Override
@@ -87,46 +98,19 @@ public class MainActivity extends AppCompatActivity
         //Return null if preference doesn't exist
         String todoList = todos.getString(TODO_LIST, null);
 
-//        Snackbar.make(view, todoList , Snackbar.LENGTH_LONG)
-//            .setAction("Action", null).show();
-//
-//        Toast.makeText(this, todoList, Toast.LENGTH_SHORT).show();
-//
-//
-//        [
-//         {"name": "Comprar llet", "done": true, "priority": 2},
-//         {"name": "Comprar pa", "done": true, "priority": 1},
-//         {"name": "Fer exercicis", "done": false, "priority": 3},
-//         {"name": "Estudiar", "done": false, "priority": 4}
-//        ]
-
-        /*
-        if(todoList == null){
-            String initial_json = "[\n" +
-                    "         {\"name\": \"Comprar llet\", \"done\": true, \"priority\": 2},\n" +
-                    "         {\"name\": \"Comprar pa\", \"done\": true, \"priority\": 1},\n" +
-                    "         {\"name\": \"Fer exercicis\", \"done\": false, \"priority\": 3},\n" +
-                    "         {\"name\": \"Estudiar\", \"done\": false, \"priority\": 4}\n" +
-                    "        ]";
-            SharedPreferences.Editor editor = todos.edit();
-            editor.putString(TODO_LIST, initial_json);
-            editor.commit();
-            todoList = todos.getString(TODO_LIST, null);
-        }
-
-        Log.d("TAG_PROVa", "********************************************");
-        Log.d("TAG_PROVA", todoList);
-        Log.d("TAG_PROVa", "********************************************");
-*/
         //Gson to serialize our objects to Json to save
         this.gson = new Gson();
 
         //Deserializes any taskarraylist we have saved
-        Type arrayTodoList = new TypeToken<TodoArrayList>() {}.getType();
-        TodoArrayList temp = gson.fromJson(todoList,arrayTodoList);
+        Type arrayTodoList = new TypeToken<TodoArrayList>() {
+        }.getType();
+        TodoArrayList temp = gson.fromJson(todoList, arrayTodoList);
+
+        TestAsyncTask testAsyncTask = new TestAsyncTask(MainActivity.this, "http://tasksapi.app/task/10");
+        testAsyncTask.execute();
 
         //If we successfully loaded a TaskArrayList from SharedPreferences, take it
-        if(temp != null){
+        if (temp != null) {
             tasks = temp;
         } else {
             //Erros TODO
@@ -138,22 +122,11 @@ public class MainActivity extends AppCompatActivity
         adapter = new CustomListAdapter(this, tasks);
         todolv.setAdapter(adapter);
 
+        Utility.setListViewHeightBasedOnChildren(todolv);
+
         //Set up the toolbar
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
-//        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-//        fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//
-//                Intent intent = new Intent(MainActivity.this, Main2Activity.class);
-//                startActivity(intent);
-//
-//                //Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-//                        //.setAction("Action", null).show();
-//            }
-//        });
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -163,6 +136,42 @@ public class MainActivity extends AppCompatActivity
 
         NavigationView navigationView = (NavigationView) findViewById(R.id.nav_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+        swipeContainer = (SwipeRefreshLayout) findViewById(R.id.swiperContainer);
+
+        // Setup refresh listener which triggers new data loading
+        swipeContainer.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                // Your code to refresh the list here.
+                // Make sure you call swipeContainer.setRefreshing(false)
+                // once the network request has completed successfully.
+                fetchDownloadJson();
+            }
+        });
+
+        // Configure the refreshing colors
+        swipeContainer.setColorSchemeResources(android.R.color.holo_blue_bright,
+                android.R.color.holo_green_light,
+                android.R.color.holo_orange_light,
+                android.R.color.holo_red_light);
+    }
+
+    private void fetchDownloadJson() {
+        Ion.with(this)
+                .load("http://acacha.github.io/json-server-todos/db_todos.json")
+                .asJsonArray()
+                .setCallback(new FutureCallback<JsonArray>() {
+                    @Override
+                    public void onCompleted(Exception e, JsonArray result) {
+                        todoList = result.toString();
+                        updateTodoslv();
+                    }
+                });
+    }
+
+    private void updateTodoslv() {
+        swipeContainer.setRefreshing(false);
     }
 
     @Override
@@ -262,6 +271,9 @@ public class MainActivity extends AppCompatActivity
                         tasks.add(todoItem);
 
                         adapter.notifyDataSetChanged();
+
+                        ListView todoslv = (ListView)findViewById(R.id.todolistview);
+                        Utility.setListViewHeightBasedOnChildren(todoslv);
                     }
                 }).
                 build();
@@ -378,5 +390,28 @@ public class MainActivity extends AppCompatActivity
                 //Code here:
             }
         });
+    }
+
+    public static class Utility {
+        public static void setListViewHeightBasedOnChildren(ListView listView) {
+            ListAdapter listAdapter = listView.getAdapter();
+
+            if (listAdapter == null) {
+            // pre-condition
+                return;
+            }
+
+            int totalHeight = 0;
+
+            for (int i = 0; i < listAdapter.getCount(); i++) {
+                View listItem = listAdapter.getView(i, null, listView);
+                listItem.measure(0, 0);
+                totalHeight += listItem.getMeasuredHeight();
+            }
+
+            ViewGroup.LayoutParams params = listView.getLayoutParams();
+            params.height = totalHeight + (listView.getDividerHeight() * (listAdapter.getCount() - 1));
+            listView.setLayoutParams(params);
+        }
     }
 }
